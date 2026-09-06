@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0e1017" />
+    <meta name="description" content="Aufstellungen, Kader und Mannschaften für Amateurfußball verwalten." />
+    <title>LINEUP Amateur</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="icons/favicon-16.png" sizes="16x16" type="image/png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="LINEUP" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      .bench-image { width: 33px; height: 33px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; }
+      .profile { border: 0; width: 100%; background: transparent; color: var(--ink); text-align: left; }
+      .quick-add-player { width: 100%; margin-top: 8px; border: 1px dashed var(--line); border-radius: var(--radius-sm); background: transparent; color: var(--accent); padding: 8px; font-size: 10px; font-weight: 800; box-sizing: border-box; }
+      .available-player { cursor: grab; }
+      .assign-search { display: flex; align-items: center; gap: 6px; margin: 10px 0; height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--muted); box-sizing: border-box; width: 100%; }
+      .assign-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); outline: 0; font-size: 11px; }
+      .delete-list-player { margin-left: 4px; border: 0; border-radius: 6px; padding: 5px 8px; background: var(--surface-alt); color: var(--danger); font-size: 10px; font-weight: 800; }
+      .picker select, .field-label select, dialog select { color: var(--ink) !important; background-color: var(--surface) !important; }
+      select option { color: var(--ink); background: var(--surface); }
+      [data-theme="dark"] .roster-table td, [data-theme="dark"] .archive-lineup strong, [data-theme="dark"] .team-record-head strong, [data-theme="dark"] .team-record-head small { color: var(--ink) !important; }
+      .auth-providers { margin-top: 4px; }
+      .google-signin-button { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: #fff; color: #3c4043; font-size: 14px; font-weight: 700; letter-spacing: .1px; box-shadow: 0 1px 3px #0002; transition: box-shadow .15s ease, transform .1s ease, filter .15s ease; }
+      .google-signin-button:hover { box-shadow: 0 6px 16px #0003; filter: brightness(1.02); }
+      .google-signin-button:active { transform: scale(.98); }
+      .google-signin-button .google-icon { flex: 0 0 auto; }
+      .auth-divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.4px; margin: 14px 0; }
+      .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+      .auth-email-submit { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+      .lang-toggle { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; width: 100%; border: 1px solid var(--line); background: var(--surface-alt); border-radius: 10px; padding: 3px; }
+      .lang-toggle button { border: 0; border-radius: 7px; background: transparent; padding: 6px 0; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+      .lang-toggle button .flag-icon { width: 20px; height: 14px; border-radius: 2px; display: block; box-shadow: 0 0 0 1px #0002; }
+      .lang-toggle button.active { background: var(--accent); color: #fff; }
+      .account-summary { display: flex; align-items: center; gap: 12px; padding: 4px 0 6px; }
+      .account-summary .avatar-lg { width: 46px; height: 46px; font-size: 14px; flex: 0 0 auto; }
+      .account-summary strong { display: block; font-size: 15px; font-weight: 800; }
+      .account-summary small { display: block; color: var(--muted); font-size: 10px; margin-top: 2px; }
+      #usernameDialog::backdrop { background: #0e1017a3; }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-row">
+          <a class="brand" href="#" aria-label="LINEUP Amateur"><span>LINEUP<span class="brand-light">AMATEUR</span></span></a>
+          <div class="undo-redo-group" id="undoRedoFab">
+            <button type="button" id="undoButton" class="undo-redo-button" title="Rückgängig" aria-label="Rückgängig" disabled>↺</button>
+            <button type="button" id="redoButton" class="undo-redo-button" title="Wiederholen" aria-label="Wiederholen" disabled>↻</button>
+          </div>
+        </div>
+        <div class="mobile-menu-panel"><button class="team-summary" id="openArchiveFromTeam" type="button"><span class="team-crest" id="teamCrest"><b>LA</b></span><span><small data-i18n="activeTeam">AKTIVE MANNSCHAFT</small><strong id="teamNamePreview">Mein Team</strong></span></button><button class="profile mobile-only-profile" id="openAuthDialogMobile" type="button"><span class="avatar" id="mobileAccountAvatar">TR</span><span><strong id="mobileAccountName">Anmelden</strong><small id="mobileAccountDetail">Trainer-Login</small></span></button></div>
+        <nav class="main-nav" aria-label="Hauptnavigation">
+          <button class="active" data-view="lineup"><span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2.2" width="18" height="19.6" rx="2.4"/><line x1="3" y1="12" x2="21" y2="12"/><circle cx="12" cy="12" r="3.3"/></svg></span><span data-i18n="navLineup">Aufstellung</span></button>
+          <button data-view="design"><span><svg viewBox="1.8 0.8 18 18" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-5 0-9 3.7-9 8.2 0 3.4 2.4 5.3 4.9 5.3.9 0 1.6-.7 1.6-1.6 0-.4-.2-.7-.4-1s-.4-.6-.4-1c0-.9.7-1.6 1.6-1.6h2.4c3.2 0 5.8-2.4 5.8-5.5C18.5 3.5 15.5 3 12 3Z"/><circle cx="7" cy="10.5" r="1"/><circle cx="9.3" cy="7.2" r="1"/><circle cx="13.3" cy="6.9" r="1"/></svg></span><span data-i18n="navDesign">Design</span></button>
+          <button data-view="roster"><span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.1"/><path d="M3.4 20c0-3.4 2.6-5.6 5.6-5.6s5.6 2.2 5.6 5.6"/><circle cx="17.4" cy="7.6" r="2.4"/><path d="M15.3 14.7c2.5.3 4.3 2.2 4.3 5.3"/></svg></span><span data-i18n="navRoster">Kader</span><b id="rosterNavCount">0</b></button>
+          <button data-view="matchday"><span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.2" width="18" height="17" rx="2.2"/><line x1="3" y1="9.4" x2="21" y2="9.4"/><line x1="7.5" y1="2.2" x2="7.5" y2="6.2"/><line x1="16.5" y1="2.2" x2="16.5" y2="6.2"/></svg></span><span data-i18n="navMatchday">Spieltag</span></button>
+          <button data-view="archive"><span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.7c0-.9.7-1.7 1.7-1.7h12.6c1 0 1.7.8 1.7 1.7V21l-8-4.1L4 21V4.7Z"/></svg></span><span data-i18n="navArchive">Mannschaften</span><b id="archiveNavCount">0</b></button>
+        </nav>
+        <button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-label="Menü" aria-expanded="false">⋮</button>
+        <div class="mobile-menu-panel"><div class="sidebar-footer">
+          <button class="theme-toggle" id="contactToggle" type="button"><span class="theme-icon">✉</span><span><strong data-i18n="contactToggle">Kontakt & Feedback</strong><small data-i18n="contactText">Fehler gefunden oder einen Wunsch für die App? Schreib uns kurz.</small></span></button>
+          <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☾</span><span><strong id="themeLabel">Dark Mode</strong><small data-i18n="switchTheme">Theme wechseln</small></span><span class="toggle-track"><i></i></span></button>
+          <div class="lang-toggle" id="langToggle" role="group" aria-label="Sprache / Language"><button type="button" data-lang="de" title="Deutsch"><svg class="flag-icon" viewBox="0 0 5 3" xmlns="http://www.w3.org/2000/svg"><rect width="5" height="1" y="0" fill="#000000"/><rect width="5" height="1" y="1" fill="#DD0000"/><rect width="5" height="1" y="2" fill="#FFCE00"/></svg></button><button type="button" data-lang="en" title="English"><svg class="flag-icon" viewBox="0 0 5 3" xmlns="http://www.w3.org/2000/svg"><rect width="5" height="3" fill="#012169"/><path d="M0,0 L5,3 M5,0 L0,3" stroke="#fff" stroke-width="0.6"/><path d="M0,0 L5,3 M5,0 L0,3" stroke="#C8102E" stroke-width="0.2"/><path d="M2.5,0 V3 M0,1.5 H5" stroke="#fff" stroke-width="1"/><path d="M2.5,0 V3 M0,1.5 H5" stroke="#C8102E" stroke-width="0.4"/></svg></button><button type="button" data-lang="es" title="Español"><svg class="flag-icon" viewBox="0 0 5 3" xmlns="http://www.w3.org/2000/svg"><rect width="5" height="3" fill="#AA151B"/><rect width="5" height="1.5" y="0.75" fill="#F1BF00"/></svg></button><button type="button" data-lang="fr" title="Français"><svg class="flag-icon" viewBox="0 0 5 3" xmlns="http://www.w3.org/2000/svg"><rect width="1.667" height="3" x="0" fill="#0055A4"/><rect width="1.667" height="3" x="1.667" fill="#fff"/><rect width="1.667" height="3" x="3.333" fill="#EF4135"/></svg></button><button type="button" data-lang="it" title="Italiano"><svg class="flag-icon" viewBox="0 0 5 3" xmlns="http://www.w3.org/2000/svg"><rect width="1.667" height="3" x="0" fill="#009246"/><rect width="1.667" height="3" x="1.667" fill="#fff"/><rect width="1.667" height="3" x="3.333" fill="#CE2B37"/></svg></button><button type="button" data-lang="pt" title="Português"><svg class="flag-icon" viewBox="0 0 5 3" xmlns="http://www.w3.org/2000/svg"><rect width="2" height="3" x="0" fill="#046A38"/><rect width="3" height="3" x="2" fill="#DA291C"/><circle cx="2" cy="1.5" r="0.6" fill="#FFCC00" stroke="#046A38" stroke-width="0.08"/></svg></button><button type="button" data-lang="tr" title="Türkçe"><svg class="flag-icon" viewBox="0 0 5 3" xmlns="http://www.w3.org/2000/svg"><rect width="5" height="3" fill="#E30A17"/><circle cx="1.9" cy="1.5" r="0.7" fill="#fff"/><circle cx="2.1" cy="1.5" r="0.56" fill="#E30A17"/><path d="M2.55,1.5 L3.35,1.24 L2.83,1.92 L2.83,1.08 L3.35,1.76 Z" fill="#fff"/></svg></button><button type="button" data-lang="nl" title="Nederlands"><svg class="flag-icon" viewBox="0 0 5 3" xmlns="http://www.w3.org/2000/svg"><rect width="5" height="1" y="0" fill="#AE1C28"/><rect width="5" height="1" y="1" fill="#fff"/><rect width="5" height="1" y="2" fill="#21468B"/></svg></button></div>
+          <button class="profile" id="openAuthDialog"><span class="avatar" id="accountAvatar">TR</span><span><strong id="accountName">Anmelden</strong><small id="accountDetail">Trainer-Login</small></span></button>
+        </div></div>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <div><span class="eyebrow" data-i18n="brandEyebrow">LINEUP AMATEUR</span><h1 id="pageTitle">Aufstellung planen</h1></div>
+          <div class="top-actions export-png-action"><button class="secondary-button" id="exportLineupPng" data-i18n="exportPngButton">↗ Grafik als PNG</button></div>
+          <div class="top-actions roster-action hidden"><button class="secondary-button" id="csvExportButton" type="button" data-i18n="csvExportButton">CSV exportieren</button><button class="secondary-button" id="csvImportButton" type="button" data-i18n="csvImportButton" data-i18n-title="csvImportTitle">CSV importieren</button><input id="csvImportInput" type="file" accept=".csv,text/csv" class="hidden" /><button class="primary-button" id="openPlayerDialog" data-i18n="addPlayer">+ Spieler hinzufügen</button></div>
+          <div class="top-actions archive-action hidden"><button class="secondary-button invites-button" id="openInvitesDialog" type="button" title="Einladungen">✉<span class="badge hidden" id="invitesBadge">0</span></button><button class="primary-button" id="openTeamDialog" data-i18n="createTeam">+ Mannschaft erstellen</button></div>
+        </header>
+
+        <section class="view active" id="lineupView">
+          <div class="workspace">
+            <aside class="control-panel">
+              <section class="selection-card" id="selectionCard">
+                <div class="selection-header"><div><span class="eyebrow" data-i18n="assignPlayerEyebrow">SPIELER ZUWEISEN</span><h2 id="selectionTitle">Startelf · Platz 1</h2></div></div>
+                <p id="selectionHelp">Spieler aus dem Kader auswählen oder auf einen Platz ziehen.</p>
+                <div class="assign-search hidden" id="assignSearchWrap"><span>⌕</span><input id="assignPlayerSearch" type="text" data-i18n-placeholder="searchPlayer" placeholder="Spieler suchen" autocomplete="off" /></div>
+                <div class="available-players" id="availablePlayers"></div>
+                <button class="quick-add-player" id="newPlayerForSlot" data-i18n="newPlayerForSlot">+ Neuer Spieler für diesen Platz</button>
+                <button class="manage-link" data-view="roster"><span data-i18n="manageRoster">Kader verwalten</span> <span>→</span></button>
+              </section>
+            </aside>
+            <section class="lineup-panel">
+              <div class="panel-toolbar">
+                <div class="toolbar-row toolbar-row-top">
+                  <label class="lineup-name"><span class="toolbar-label" data-i18n="lineupNameLabel">AUFSTELLUNGSNAME</span><input id="lineupName" maxlength="40" /></label>
+                  <div class="lineup-buttons-group">
+                    <button class="secondary-button small-button" id="clearLineup" data-i18n="clearLineup">⟲ Aufstellung leeren</button>
+                    <div class="lineup-save-group"><button class="primary-button small-button" id="saveLineup" data-i18n="saveLineup">✓ Aufstellung speichern</button><small id="lineupSaveStatus" class="lineup-save-status"></small></div>
+                  </div>
+                </div>
+                <div class="toolbar-row toolbar-row-controls">
+                  <div class="picker player-count-picker"><span class="toolbar-label" data-i18n="playerCountLabel">ANZAHL SPIELER</span><div class="segmented" id="playerCount" role="group" aria-label="Anzahl Spieler"><button type="button" data-value="5">5</button><button type="button" data-value="6">6</button><button type="button" data-value="7">7</button><button type="button" data-value="8">8</button><button type="button" data-value="9">9</button><button type="button" data-value="10">10</button><button type="button" data-value="11">11</button></div></div>
+                  <div class="custom-formation-picker"><span class="toolbar-label" data-i18n="formationLabel">FORMATION</span><div class="custom-formation-row"><input id="customFormationInput" type="text" data-i18n-placeholder="formationPlaceholder" placeholder="z. B. 442/4-4-2" maxlength="14" autocomplete="off" /><button class="text-button" id="confirmCustomFormation" type="button" data-i18n="confirmFormation">✓ Bestätigen</button></div><small class="custom-formation-hint" id="customFormationHint"></small></div>
+                </div>
+                <div class="toolbar-row toolbar-row-controls">
+                  <label class="free-move-toggle"><span id="freeMoveLabel" data-i18n="freeMove">Spieler fixieren</span><span class="switch"><input type="checkbox" id="freeMoveToggle" /><span class="switch-track"><i class="switch-knob"></i></span></span></label>
+                  <div class="grid-snap-picker">
+                    <label class="free-move-toggle grid-toggle-row"><span data-i18n="gridToggle">Raster</span><span class="switch"><input type="checkbox" id="gridToggle" /><span class="switch-track"><i class="switch-knob"></i></span></span><input type="range" id="gridSizeInput" class="grid-size-inline hidden" min="0.5" max="10" step="0.5" value="5" /><small id="gridSizeValue" class="hidden">5%</small></label>
+                  </div>
+                </div>
+              </div>
+              <div class="pitch-frame"><div class="pitch" id="pitch" aria-label="Startelf auf dem Spielfeld"></div></div>
+              <section class="bench-section">
+                <div class="bench-heading"><div><span class="eyebrow" data-i18n="benchEyebrow">ERSATZBANK</span><h2><span id="benchCount">0</span> <span data-i18n="benchOfMax">/12 Spielern</span></h2></div><button class="text-button bench-add" id="addBenchSlot" data-i18n="addBenchSlot">+ Bankspieler</button></div>
+                <div class="bench-with-coach"><div class="bench-slots" id="benchSlots"></div><button class="coach-slot" id="editCoach" type="button"><span class="coach-avatar" id="coachAvatar">TR</span><span><small data-i18n="coach">TRAINER</small><strong id="coachNamePreview">Trainerplatz</strong></span></button></div>
+              </section>
+            </section>
+            <section class="player-card hidden" id="playerCard">
+              <div class="player-card-heading"><div><span class="eyebrow" data-i18n="playerEyebrow">SPIELER</span><h2 id="playerProfileName">Spieler</h2></div></div>
+              <div class="player-profile-content" id="playerProfileContent"></div>
+              <div class="player-profile-actions">
+                <button class="secondary-button" id="playerEditButton" data-i18n="editPlayer">Spieler bearbeiten</button>
+                <button class="secondary-button" id="playerCaptainButton" data-i18n="appointCaptain">Kapitän ernennen</button>
+                <button class="primary-button" id="playerRemoveButton" data-i18n="removePlayer">Spieler entfernen</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="designView">
+          <div class="design-workspace">
+            <section class="team-card design-card">
+              <div class="team-card-heading"><div><span class="eyebrow" data-i18n="kit">TRIKOT</span><h2 data-i18n="trikotLook">Trikotlook</h2></div><div class="kit-preview" id="kitPreview">10</div></div>
+              <div class="kit-role-toggle segmented" id="kitRoleToggle" role="group" aria-label="Trikot Rolle" style="margin:14px 0 2px"><button type="button" class="active" data-role="field" data-i18n="kitRoleField">Feldspieler</button><button type="button" data-role="gk" data-i18n="posGoalkeeper">Torwart</button></div>
+              <div class="kit-controls">
+                <label class="field-label"><span data-i18n="primaryColor">Primärfarbe</span><input id="kitPrimary" type="color" /></label><label class="field-label"><span data-i18n="secondaryColor">Sekundärfarbe</span><input id="kitSecondary" type="color" /></label>
+                <label class="field-label"><span data-i18n="numberColor">Nummernfarbe</span><input id="kitNumberColor" type="color" /></label>
+                <div class="field-label shape-picker-row"><span data-i18n="shapeLabel">Form</span><div class="shape-picker" id="kitShapePicker" role="group" aria-label="Form"></div></div>
+                <div class="field-label pattern-picker"><span data-i18n="pattern">Muster</span><div class="pattern-picker-grid" id="kitPatternPicker" role="group" aria-label="Muster"></div></div>
+              </div>
+            </section>
+
+            <section class="team-card design-card">
+              <div class="team-card-heading"><div><span class="eyebrow" data-i18n="fieldEyebrow">SPIELFELD</span><h2 data-i18n="fieldLook">Spielfeldlook</h2></div></div>
+              <div class="design-pitch-preview"><div class="mini-pitch" id="designPitchPreview"></div></div>
+              <div class="kit-controls">
+                <label class="field-label"><span data-i18n="grassColor">Spielfeldfarbe</span><input id="designGrassColor" type="color" /></label>
+                <label class="field-label"><span data-i18n="lineColor">Linienfarbe</span><input id="designLineColor" type="color" /></label>
+                <div class="field-label pattern-picker"><span data-i18n="grassPattern">Rasenstil</span><div class="pattern-picker-grid" id="grassPatternPicker" role="group" aria-label="Rasenstil"></div></div>
+              </div>
+            </section>
+
+            <section class="team-card design-card">
+              <div class="team-card-heading"><div><span class="eyebrow" data-i18n="menuEyebrow">MENÜ</span><h2 data-i18n="menuLook">Menülook</h2></div><div class="design-accent-preview" id="designAccentPreview">LA</div></div>
+              <div class="kit-controls">
+                <label class="field-label"><span data-i18n="accentColor">Menüfarbe</span><input id="designAccentColor" type="color" /></label>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="rosterView">
+          <section class="roster-panel">
+            <div class="roster-intro"><div><span class="eyebrow"><span data-i18n="rosterOf">KADER VON</span> <span id="rosterTeamName">MEIN TEAM</span></span><h2 data-i18n="allPlayers">Alle Spieler</h2></div><div class="roster-stat"><strong id="rosterCount">0</strong><span data-i18n="playersInRoster">Spieler im Kader</span></div></div>
+            <div class="roster-toolbar"><div class="squad-search"><span>⌕</span><input id="playerSearch" data-i18n-placeholder="searchPlayer" placeholder="Spieler suchen" /></div><span id="rosterHint">Noch kein Kader angelegt</span></div>
+            <div class="roster-table-wrap"><table class="roster-table"><thead><tr><th class="sortable" data-sort="name"><span data-i18n="colPlayer">Spieler</span><span class="sort-arrow"></span></th><th class="sortable" data-sort="number"><span data-i18n="colNumber">Nr.</span><span class="sort-arrow"></span></th><th class="sortable" data-sort="year"><span data-i18n="colYear">Jahrgang</span><span class="sort-arrow"></span></th><th class="sortable" data-sort="position"><span data-i18n="colPosition">Position</span><span class="sort-arrow"></span></th><th><span data-i18n="statusLabel">Status</span></th><th></th></tr></thead><tbody id="rosterList"></tbody></table><div class="roster-empty" id="rosterEmpty"><div class="empty-jersey"></div><h3 data-i18n="rosterEmptyTitle">Dein Kader ist noch leer.</h3><p data-i18n="rosterEmptyText">Lege Spieler an und wähle sie für deine Aufstellung aus.</p><button class="primary-button" id="emptyAddPlayer" data-i18n="addFirstPlayer">Ersten Spieler hinzufügen</button></div></div>
+          </section>
+        </section>
+
+        <section class="view" id="matchdayView">
+          <div class="design-workspace">
+            <section class="team-card design-card">
+              <div class="team-card-heading"><div><span class="eyebrow" data-i18n="matchdayEyebrow">SPIELTAG</span><h2 data-i18n="matchdayDetails">Spieltag-Infos</h2></div></div>
+              <div class="kit-controls">
+                <label class="field-label" style="grid-column:span 2"><span data-i18n="opponentName">Gegner</span><input id="matchdayOpponent" maxlength="30" data-i18n-placeholder="opponentPlaceholder" placeholder="Gegnername" /></label>
+                <div class="field-label" style="grid-column:span 2"><span data-i18n="homeAway">Heim/Auswärts</span><div class="segmented" id="matchdayHomeAway" role="group" aria-label="Heim/Auswärts"><button type="button" data-value="home" data-i18n="home">Heim</button><button type="button" data-value="away" data-i18n="away">Auswärts</button></div></div>
+                <label class="field-label" style="grid-column:span 2"><span data-i18n="venue">Spielort</span><input id="matchdayVenue" maxlength="40" data-i18n-placeholder="venuePlaceholder" placeholder="Sportplatz, Straße" /></label>
+                <label class="field-label"><span data-i18n="matchDate">Datum</span><input id="matchdayDate" type="date" /></label>
+                <label class="field-label"><span data-i18n="matchTime">Anstoß</span><input id="matchdayTime" type="time" /></label>
+              </div>
+              <div class="image-upload-row">
+                <label class="image-avatar-edit" id="matchdayCrestDrop" for="matchdayCrestUpload" data-i18n-title="uploadImage"><span class="avatar-circle" id="matchdayCrestPreview"></span><span class="image-avatar-edit-hint" aria-hidden="true">📷</span><input id="matchdayCrestUpload" type="file" accept="image/png,image/jpeg" /></label>
+                <span class="image-upload-row-text"><strong data-i18n="opponentCrest">Wappen Gegner</strong><em data-i18n="optional">optional</em><button class="remove-image hidden" id="removeMatchdayCrest" type="button" data-i18n="removeImage">Bild entfernen</button></span>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="archiveView">
+          <section class="archive-panel"><div class="archive-intro"><span class="eyebrow" data-i18n="savedEyebrow">GESPEICHERT</span><h2 data-i18n="teamsAndLineups">Mannschaften & Aufstellungen</h2></div><div class="team-archive" id="teamArchive"></div></section>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="playerDialog"><form id="playerForm"><div class="dialog-heading"><div><span class="eyebrow" id="playerDialogEyebrow">KADER ERWEITERN</span><h2 id="playerDialogTitle">Spieler hinzufügen</h2></div><button class="dialog-close" id="closePlayerDialog" type="button">×</button></div><input id="editingPlayerId" type="hidden" /><label><span data-i18n="name">Name</span><input id="newPlayerName" required maxlength="30" /></label><div class="form-columns"><label><span data-i18n="jerseyNumber">Rückennummer</span> <em data-i18n="optional">optional</em><input id="newPlayerNumber" type="number" min="1" max="99" /></label><label><span data-i18n="birthYear">Jahrgang</span> <em data-i18n="optional">optional</em><input id="newPlayerYear" type="number" min="1940" max="2026" /></label></div><div class="field-label"><span data-i18n="position">Position</span> <em data-i18n="optional">optional</em><div class="position-check-group" id="playerPositionGroup"><label class="position-check"><input type="checkbox" value="TW" /><span>TW</span></label><label class="position-check"><input type="checkbox" value="IV" /><span>IV</span></label><label class="position-check"><input type="checkbox" value="RV" /><span>RV</span></label><label class="position-check"><input type="checkbox" value="LV" /><span>LV</span></label><label class="position-check"><input type="checkbox" value="DM" /><span>DM</span></label><label class="position-check"><input type="checkbox" value="ZM" /><span>ZM</span></label><label class="position-check"><input type="checkbox" value="OM" /><span>OM</span></label><label class="position-check"><input type="checkbox" value="RM" /><span>RM</span></label><label class="position-check"><input type="checkbox" value="LM" /><span>LM</span></label><label class="position-check"><input type="checkbox" value="RF" /><span>RF</span></label><label class="position-check"><input type="checkbox" value="LF" /><span>LF</span></label><label class="position-check"><input type="checkbox" value="ST" /><span>ST</span></label></div></div><div class="image-upload-row"><label class="image-avatar-edit" id="playerImageDrop" for="playerImageUpload" data-i18n-title="uploadImage"><span class="avatar-circle" id="playerImagePreview"></span><span class="image-avatar-edit-hint" aria-hidden="true">📷</span><input id="playerImageUpload" type="file" accept="image/png,image/jpeg" /></label><span class="image-upload-row-text"><strong data-i18n="playerPhoto">Spielerbild</strong><em data-i18n="optional">optional</em><button class="remove-image hidden" id="removePlayerImage" type="button" data-i18n="removeImage">Bild entfernen</button></span></div><label><span data-i18n="playerNotes">Notizen</span> <em data-i18n="optional">optional</em><textarea id="newPlayerNotes" maxlength="500" rows="3" data-i18n-placeholder="playerNotesPlaceholder" placeholder="z. B. Verletzung, besondere Absprachen …"></textarea></label><div class="dialog-actions"><button class="delete-button hidden" id="deletePlayer" type="button" data-i18n="deletePlayer">Spieler löschen</button><span></span><button class="secondary-button" id="cancelPlayerDialog" type="button" data-i18n="cancel">Abbrechen</button><button class="primary-button" type="submit" data-i18n="save">Speichern</button></div></form></dialog>
+
+    <dialog id="coachDialog"><form id="coachForm"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="coach">TRAINER</span><h2 data-i18n="editCoach">Trainer bearbeiten</h2></div><button class="dialog-close" id="closeCoachDialog" type="button">×</button></div><label><span data-i18n="name">Name</span><input id="coachName" maxlength="30" data-i18n-placeholder="coachNamePlaceholder" placeholder="Trainername" /></label><div class="image-upload-row"><label class="image-avatar-edit" id="coachImageDrop" for="coachImageUpload" data-i18n-title="uploadImage"><span class="avatar-circle" id="coachImagePreview"></span><span class="image-avatar-edit-hint" aria-hidden="true">📷</span><input id="coachImageUpload" type="file" accept="image/png,image/jpeg" /></label><span class="image-upload-row-text"><strong data-i18n="coachPhoto">Trainerbild</strong><em data-i18n="optional">optional</em><button class="remove-image hidden" id="removeCoachImage" type="button" data-i18n="removeImage">Bild entfernen</button></span></div><div class="dialog-actions"><span></span><span></span><button class="secondary-button" id="cancelCoachDialog" type="button" data-i18n="cancel">Abbrechen</button><button class="primary-button" type="submit" data-i18n="save">Speichern</button></div></form></dialog>
+
+    <dialog id="teamDialog"><form id="teamForm"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="newTeamEyebrow">NEUE MANNSCHAFT</span><h2 data-i18n="createTeamTitle">Mannschaft erstellen</h2></div><button class="dialog-close" id="closeTeamDialog" type="button">×</button></div><label><span data-i18n="teamName">Teamname</span><input id="newTeamName" required maxlength="30" /></label><label class="field-label"><span data-i18n="sportLabel">Sportart</span><select id="newTeamSport"><option value="football" data-i18n="sportFootball">Fußball</option><option value="futsal" data-i18n="sportFutsal">Kleinfeldfußball</option></select></label><div class="form-columns"><label class="field-label"><span data-i18n="primaryColor">Primärfarbe</span><input id="newTeamKitPrimary" type="color" /></label><label class="field-label"><span data-i18n="secondaryColor">Sekundärfarbe</span><input id="newTeamKitSecondary" type="color" /></label></div><div class="form-columns"><label class="field-label"><span data-i18n="numberColor">Nummernfarbe</span><input id="newTeamKitNumberColor" type="color" /></label><label class="field-label"><span data-i18n="grassColor">Spielfeldfarbe</span><input id="newTeamGrassColor" type="color" /></label></div><div class="form-columns"><label class="field-label"><span data-i18n="accentColor">Menüfarbe</span><input id="newTeamAccentColor" type="color" /></label></div><div class="image-upload-row"><label class="image-avatar-edit" id="newTeamCrestDrop" for="newTeamCrest" data-i18n-title="uploadImage"><span class="avatar-circle" id="newTeamCrestPreview"></span><span class="image-avatar-edit-hint" aria-hidden="true">📷</span><input id="newTeamCrest" type="file" accept="image/png" /></label><span class="image-upload-row-text"><strong data-i18n="crestPng">Wappen (PNG)</strong><em data-i18n="optional">optional</em></span></div><div class="dialog-actions"><span></span><span></span><button class="secondary-button" id="cancelTeamDialog" type="button" data-i18n="cancel">Abbrechen</button><button class="primary-button" type="submit" data-i18n="createTeamSubmit">Mannschaft anlegen</button></div></form></dialog>
+
+    <dialog id="editTeamDialog"><form id="editTeamForm"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="editTeamEyebrow">MANNSCHAFT BEARBEITEN</span><h2 data-i18n="editTeamTitle">Mannschaft bearbeiten</h2></div><button class="dialog-close" id="closeEditTeamDialog" type="button">×</button></div><input id="editingTeamId" type="hidden" /><label><span data-i18n="teamName">Teamname</span><input id="editTeamName" required maxlength="30" /></label><label class="field-label"><span data-i18n="sportLabel">Sportart</span><select id="editTeamSport"><option value="football" data-i18n="sportFootball">Fußball</option><option value="futsal" data-i18n="sportFutsal">Kleinfeldfußball</option></select></label><div class="form-columns"><label class="field-label"><span data-i18n="primaryColor">Primärfarbe</span><input id="editTeamKitPrimary" type="color" /></label><label class="field-label"><span data-i18n="secondaryColor">Sekundärfarbe</span><input id="editTeamKitSecondary" type="color" /></label></div><div class="form-columns"><label class="field-label"><span data-i18n="numberColor">Nummernfarbe</span><input id="editTeamKitNumberColor" type="color" /></label><label class="field-label"><span data-i18n="grassColor">Spielfeldfarbe</span><input id="editTeamGrassColor" type="color" /></label></div><div class="form-columns"><label class="field-label"><span data-i18n="accentColor">Menüfarbe</span><input id="editTeamAccentColor" type="color" /></label></div><div class="image-upload-row"><label class="image-avatar-edit" id="editTeamCrestDrop" for="editTeamCrestUpload"><span class="avatar-circle" id="editTeamCrestPreview"></span><span class="image-avatar-edit-hint" aria-hidden="true">📷</span><input id="editTeamCrestUpload" type="file" accept="image/png" /></label><span class="image-upload-row-text"><strong data-i18n="crestPng">Wappen (PNG)</strong><em data-i18n="optional">optional</em><button class="remove-image hidden" id="removeEditTeamCrest" type="button" data-i18n="removeCrest">Wappen entfernen</button></span></div><div class="dialog-actions"><span></span><span></span><button class="secondary-button" id="cancelEditTeamDialog" type="button" data-i18n="cancel">Abbrechen</button><button class="primary-button" type="submit" data-i18n="save">Speichern</button></div></form></dialog>
+
+    <dialog id="shareTeamDialog"><div class="dialog-body"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="shareTeamEyebrow">MANNSCHAFT TEILEN</span><h2><span data-i18n="shareTeamTitle">Teilen</span>: <span id="shareTeamDialogName"></span></h2></div><button class="dialog-close" id="closeShareTeamDialog" type="button">×</button></div><input id="shareTeamId" type="hidden" /><form id="shareInviteForm"><label><span data-i18n="inviteByEmail">Per E-Mail einladen</span><input id="shareInviteEmail" type="email" required data-i18n-placeholder="invitePlaceholder" placeholder="E-Mail-Adresse" /></label><label><span data-i18n="inviteRoleLabel">Berechtigung</span><select id="shareInviteRole"><option value="full" data-i18n="roleFull">Vollzugriff</option><option value="lineups" data-i18n="roleLineups">Nur Aufstellungen</option><option value="viewer" data-i18n="roleViewer">Nur ansehen</option></select></label><div class="dialog-actions"><span></span><span></span><span></span><button class="primary-button" type="submit" data-i18n="sendInvite">Einladen</button></div></form><h3 data-i18n="inviteLinkTitle">Einladungslink</h3><p class="auth-hint" data-i18n="inviteLinkHint">Jede Person mit diesem Link kann der Mannschaft beitreten – ideal zum Teilen per WhatsApp &amp; Co.</p><div id="inviteLinkArea"><div class="field-label"><span data-i18n="inviteLinkRoleLabel">Berechtigung für den Link</span><select id="inviteLinkRole"><option value="full" data-i18n="roleFull">Vollzugriff</option><option value="lineups" data-i18n="roleLineups">Nur Aufstellungen</option><option value="viewer" data-i18n="roleViewer">Nur ansehen</option></select></div><button type="button" class="secondary-button" id="createInviteLinkButton" data-i18n="createInviteLink">Link erstellen</button><div class="invite-link-row hidden" id="inviteLinkRow"><input id="inviteLinkValue" type="text" readonly /><button type="button" class="secondary-button" id="copyInviteLinkButton" data-i18n="copyInviteLink">Kopieren</button><button type="button" class="secondary-button" id="whatsappInviteLinkButton" data-i18n="shareInviteLinkWhatsapp">Per WhatsApp teilen</button></div><div class="invite-link-actions hidden" id="inviteLinkActions"><button type="button" class="text-button" id="regenerateInviteLinkButton" data-i18n="regenerateInviteLink">Neu erzeugen</button><button type="button" class="text-button danger-text" id="revokeInviteLinkButton" data-i18n="revokeInviteLink">Deaktivieren</button></div></div><h3 data-i18n="membersTitle">Mitglieder</h3><div id="shareMembersList" class="invite-list"></div><div class="dialog-actions"><span></span><span></span><span></span><button class="secondary-button" id="closeShareTeamDialog2" type="button" data-i18n="closeDialog">Schließen</button></div></div></dialog>
+
+    <dialog id="invitesDialog"><div class="dialog-body"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="invitesTitle">EINLADUNGEN</span><h2 data-i18n="openInvites">Einladungen</h2></div><button class="dialog-close" id="closeInvitesDialog" type="button">×</button></div><div id="invitesList" class="invite-list"></div><div class="dialog-actions"><span></span><span></span><span></span><button class="secondary-button" id="closeInvitesDialog2" type="button" data-i18n="closeDialog">Schließen</button></div></div></dialog>
+
+    <dialog id="joinTeamDialog"><div class="dialog-body"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="joinTeamDialogEyebrow">EINLADUNG</span><h2 data-i18n="joinTeamDialogTitle">Mannschaft beitreten</h2></div><button class="dialog-close" id="closeJoinTeamDialog" type="button">×</button></div><p id="joinTeamDialogText"></p><div class="dialog-actions"><span></span><span></span><button class="secondary-button" id="cancelJoinTeamDialog" type="button" data-i18n="joinTeamCancel">Nein, danke</button><button class="primary-button" id="confirmJoinTeamButton" type="button" data-i18n="joinTeamConfirm">Beitreten</button></div></div></dialog>
+
+    <dialog id="authDialog"><form id="authForm"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="accountEyebrow">KONTO</span><h2 data-i18n="loginOrRegister">Anmelden oder registrieren</h2></div><button class="dialog-close" id="closeAuthDialog" type="button">×</button></div><div id="authLoggedInSection" class="hidden"><div class="account-summary"><span class="avatar avatar-lg" id="authLoggedInAvatar">TR</span><div><strong id="authLoggedInUsername">–</strong><small id="authLoggedInEmail"></small></div></div><div class="dialog-actions"><span></span><span></span><button class="secondary-button" id="openAccountSettings" type="button" data-i18n="accountSettings">Konto-Einstellungen</button><button class="primary-button" id="authLogout" type="button" data-i18n="logout">Abmelden</button></div></div><div id="authGuestSection"><div class="auth-providers"><button id="authGoogle" type="button" class="google-signin-button"><svg class="google-icon" viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg><span data-i18n="continueWithGoogle">Mit Google fortfahren</span></button></div><div class="auth-divider"><span data-i18n="authOr">oder</span></div><label><span data-i18n="emailAddress">E-Mail-Adresse</span><input id="accountEmail" type="email" required placeholder="name@verein.de" /></label><div class="dialog-actions" style="margin-top:10px"><span></span><button class="secondary-button" id="cancelAuthDialog" type="button" data-i18n="cancel">Abbrechen</button><button class="primary-button auth-email-submit" type="submit"><span>✉</span><span data-i18n="continueWithEmail">Mit E-Mail fortfahren</span></button></div><p class="auth-hint" id="authEmailHint" style="margin:8px 0 0;font-size:10px;color:var(--muted);" data-i18n="emailLinkHint">Wir senden dir einen Anmeldelink per E-Mail – kein Passwort nötig.</p></div></form></dialog>
+    <dialog id="accountSettingsDialog"><form id="accountSettingsForm"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="accountEyebrow">KONTO</span><h2 data-i18n="accountSettings">Konto-Einstellungen</h2></div><button class="dialog-close" id="closeAccountSettingsDialog" type="button">×</button></div><div class="account-summary"><label class="account-avatar-edit" id="settingsAvatarDrop" for="settingsAvatarUpload" data-i18n-title="uploadImage"><span class="avatar avatar-lg" id="settingsAvatar">TR</span><span class="account-avatar-edit-hint" aria-hidden="true">📷</span><input id="settingsAvatarUpload" type="file" accept="image/png,image/jpeg" /></label><div><strong id="settingsEmailDisplay"></strong><small data-i18n="loggedInAs">Angemeldet als</small></div></div><button class="remove-image hidden" id="removeSettingsAvatar" type="button" data-i18n="removeImage">Bild entfernen</button><label><span data-i18n="username">Benutzername</span><input id="settingsUsername" required maxlength="24" minlength="2" /></label><p class="auth-hint" data-i18n="usernameHint">Dein Benutzername wird z. B. beim Teilen deiner Mannschaft angezeigt.</p><div class="dialog-actions"><button class="delete-button" id="settingsLogout" type="button" data-i18n="logout">Abmelden</button><span></span><button class="secondary-button" id="cancelAccountSettingsDialog" type="button" data-i18n="cancel">Abbrechen</button><button class="primary-button" type="submit" data-i18n="save">Speichern</button></div><div class="danger-zone"><h3 data-i18n="dangerZoneTitle">Konto löschen</h3><p class="auth-hint" data-i18n="dangerZoneHint">Löscht dein Konto und alle damit verbundenen Daten (Mannschaften, Aufstellungen, Profil) unwiderruflich. Dies kann nicht rückgängig gemacht werden.</p><button class="delete-button" id="openDeleteAccountDialog" type="button" data-i18n="deleteAccountButton">Konto unwiderruflich löschen</button></div></form></dialog>
+    <dialog id="exportPngDialog"><form id="exportPngForm"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="exportPngEyebrow">GRAFIK ERSTELLEN</span><h2 data-i18n="exportPngTitle">Grafik als PNG</h2></div><button class="dialog-close" id="closeExportPngDialog" type="button">×</button></div><label class="export-picker"><span class="toolbar-label" data-i18n="exportTypeLabel">ART DER GRAFIK</span><div class="segmented" id="exportPngTypeGroup" role="group"><button type="button" data-value="lineup" data-i18n="exportTypeLineup">Normale Grafik</button><button type="button" data-value="matchday" data-i18n="exportTypeMatchday">Spieltagsgrafik</button></div></label><label class="export-picker"><span class="toolbar-label" data-i18n="exportFormatLabel">FORMAT</span><div class="segmented" id="exportPngFormatGroup" role="group"><button type="button" data-value="9:16" data-i18n="exportFormatPortrait">9:16 · Story</button><button type="button" data-value="1:1" data-i18n="exportFormatSquare">1:1 · Quadrat</button><button type="button" data-value="16:9" data-i18n="exportFormatLandscape">16:9 · Breit</button></div></label><div class="dialog-actions"><span></span><button class="secondary-button" id="cancelExportPngDialog" type="button" data-i18n="cancel">Abbrechen</button><button class="primary-button" type="submit" data-i18n="exportPngConfirm">↗ Grafik erstellen</button></div></form></dialog>
+    <dialog id="deleteAccountDialog"><form id="deleteAccountForm"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="dangerEyebrow">ACHTUNG</span><h2 data-i18n="deleteAccountTitle">Konto unwiderruflich löschen</h2></div><button class="dialog-close" id="closeDeleteAccountDialog" type="button">×</button></div><p data-i18n="deleteAccountWarning">Diese Aktion löscht dein Konto und <strong>alle</strong> deine Mannschaften, Aufstellungen und Profildaten dauerhaft. Es gibt keine Möglichkeit, dies rückgängig zu machen.</p><label><span data-i18n="deleteAccountConfirmLabel">Gib zur Bestätigung <strong>LÖSCHEN</strong> ein</span><input id="deleteAccountConfirmInput" autocomplete="off" placeholder="LÖSCHEN" /></label><p class="auth-hint" id="deleteAccountError" style="display:none;color:var(--danger, #d33);"></p><div class="dialog-actions"><span></span><span></span><button class="secondary-button" id="cancelDeleteAccountDialog" type="button" data-i18n="cancel">Abbrechen</button><button class="delete-button" id="confirmDeleteAccountButton" type="submit" data-i18n="deleteAccountConfirmButton">Konto endgültig löschen</button></div></form></dialog>
+
+    <dialog id="contactDialog"><form id="contactForm"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="contactEyebrow">FEEDBACK</span><h2 data-i18n="contactTitle">Kontakt & Feedback</h2></div><button class="dialog-close" id="closeContactDialog" type="button">×</button></div><p class="auth-hint" data-i18n="contactText">Fehler gefunden oder einen Wunsch für die App? Schreib uns kurz.</p><label><span data-i18n="contactNameLabel">Dein Name</span><input id="contactName" name="from_name" type="text" required placeholder="Max Mustermann" /></label><label><span data-i18n="contactEmailLabel">Deine E-Mail-Adresse</span><input id="contactEmail" name="from_email" type="email" required placeholder="name@verein.de" /></label><label><span data-i18n="contactMessageLabel">Nachricht</span><textarea id="contactMessage" name="message" required rows="5" data-i18n-placeholder="contactMessagePlaceholder" placeholder="Was möchtest du uns mitteilen?"></textarea></label><p class="auth-hint" id="contactError" style="display:none;color:var(--danger,#d33);"></p><div class="dialog-actions"><span></span><button class="secondary-button" id="cancelContactDialog" type="button" data-i18n="contactCancel">Abbrechen</button><button class="primary-button" id="contactSubmitButton" type="submit" data-i18n="contactSend">✉ Absenden</button></div></form></dialog>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <dialog id="usernameDialog"><form id="usernameForm"><div class="dialog-heading"><div><span class="eyebrow" data-i18n="accountEyebrow">KONTO</span><h2 data-i18n="chooseUsernameTitle">Wähle deinen Benutzernamen</h2></div></div><p data-i18n="chooseUsernameText">Bevor es losgeht, brauchen wir noch einen Benutzernamen für dein neues Konto.</p><label><span data-i18n="username">Benutzername</span><input id="chooseUsername" required maxlength="24" minlength="2" autocomplete="off" /></label><p class="auth-hint" id="usernameError" style="display:none;color:var(--danger);"></p><div class="dialog-actions"><span></span><span></span><span></span><button class="primary-button" type="submit" data-i18n="continueLabel">Weiter</button></div></form></dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
+    <div class="pwa-install-banner" id="pwaInstallBanner" hidden>
+      <span class="pwa-install-icon"><img src="icons/icon-72.png" alt="" width="28" height="28" /></span>
+      <span class="pwa-install-text">
+        <strong>LINEUP installieren</strong>
+        <small>Als App hinzufügen für schnellen Zugriff &amp; Offline-Nutzung</small>
+      </span>
+      <button type="button" id="pwaInstallButton" class="primary-button">Installieren</button>
+      <button type="button" id="pwaInstallDismiss" class="dialog-close" aria-label="Schließen">×</button>
+    </div>
+    <script type="module" src="firebase-init.js"></script>
+    <script src="app.js"></script>
+    <script src="color-picker.js"></script>
+    <script>
+      // Service worker registration (offline support, app shell caching)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('service-worker.js').catch((err) => {
+            console.warn('Service worker registration failed:', err);
+          });
+        });
+      }
+
+      // Install prompt (Android/desktop Chrome/Edge/Opera)
+      let deferredInstallPrompt = null;
+      const pwaBanner = document.getElementById('pwaInstallBanner');
+      const pwaInstallButton = document.getElementById('pwaInstallButton');
+      const pwaInstallDismiss = document.getElementById('pwaInstallDismiss');
+      const PWA_DISMISS_KEY = 'lineupPwaInstallDismissed';
+
+      window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        const alreadyInstalled = window.matchMedia('(display-mode: standalone)').matches;
+        const dismissed = localStorage.getItem(PWA_DISMISS_KEY) === '1';
+        if (!alreadyInstalled && !dismissed && pwaBanner) {
+          pwaBanner.hidden = false;
+        }
+      });
+
+      if (pwaInstallButton) {
+        pwaInstallButton.addEventListener('click', async () => {
+          if (!deferredInstallPrompt) {
+            alert('Die Installation kann gerade nicht automatisch gestartet werden. Bitte nutze das Installations-Symbol in der Adressleiste oder das Browser-Menü ("Zu... hinzufügen" / "App installieren").');
+            return;
+          }
+          try {
+            deferredInstallPrompt.prompt();
+            await deferredInstallPrompt.userChoice;
+          } catch (err) {
+            console.error('[PWA] Install prompt failed:', err);
+            alert('Installation ist fehlgeschlagen: ' + err.message + '\n\nBitte nutze stattdessen das Installations-Symbol in der Adressleiste.');
+          } finally {
+            deferredInstallPrompt = null;
+            if (pwaBanner) pwaBanner.hidden = true;
+          }
+        });
+      }
+
+      if (pwaInstallDismiss) {
+        pwaInstallDismiss.addEventListener('click', () => {
+          if (pwaBanner) pwaBanner.hidden = true;
+          localStorage.setItem(PWA_DISMISS_KEY, '1');
+        });
+      }
+
+      window.addEventListener('appinstalled', () => {
+        if (pwaBanner) pwaBanner.hidden = true;
+        deferredInstallPrompt = null;
+      });
+    </script>
+  </body>
+</html>

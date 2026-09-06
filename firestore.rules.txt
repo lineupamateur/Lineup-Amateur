@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /teams/{teamId} {
+      function isMember() {
+        return request.auth != null &&
+          request.auth.uid in get(/databases/$(database)/documents/teams/$(teamId)).data.memberUids;
+      }
+      function myRole() {
+        return get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.role;
+      }
+      function isOwner() {
+        return isMember() && myRole() == 'owner';
+      }
+      function canEditData() {
+        return isMember() && myRole() in ['owner', 'full', 'lineups'];
+      }
+
+      allow get: if isMember();
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.ownerUid &&
+        request.resource.data.memberUids == [request.auth.uid];
+      allow update: if canEditData();
+      allow delete: if isOwner();
+
+      match /members/{memberUid} {
+        allow read: if isMember();
+        allow create: if request.auth != null && (
+          isOwner() ||
+          (request.auth.uid == memberUid &&
+           request.resource.data.uid == request.auth.uid &&
+           request.resource.data.role in ['owner', 'full', 'lineups', 'viewer'] &&
+           exists(/databases/$(database)/documents/teams/$(teamId)))
+        );
+        allow update: if isOwner();
+        allow delete: if isOwner() || request.auth.uid == memberUid;
+      }
+    }
+
+    match /invites/{inviteId} {
+      allow read: if request.auth != null && (
+        resource.data.type == 'link' ||
+        resource.data.email == request.auth.token.email.lower()
+      );
+      allow create: if request.auth != null &&
+        exists(/databases/$(database)/documents/teams/$(request.resource.data.teamId)/members/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/teams/$(request.resource.data.teamId)/members/$(request.auth.uid)).data.role == 'owner';
+      allow delete: if request.auth != null && (
+        resource.data.email == request.auth.token.email.lower() ||
+        resource.data.invitedByUid == request.auth.uid ||
+        resource.data.createdByUid == request.auth.uid
+      );
+    }
+  }
+}
