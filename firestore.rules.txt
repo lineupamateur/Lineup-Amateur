@@ -9,7 +9,7 @@ service cloud.firestore {
     match /teams/{teamId} {
       function isMember() {
         return request.auth != null &&
-          request.auth.uid in get(/databases/$(database)/documents/teams/$(teamId)).data.memberUids;
+          exists(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid));
       }
       function myRole() {
         return get(/databases/$(database)/documents/teams/$(teamId)/members/$(request.auth.uid)).data.role;

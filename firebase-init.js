@@ -32,8 +32,6 @@ import {
   where,
   updateDoc,
   onSnapshot,
-  arrayUnion,
-  arrayRemove,
 } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js';
 // Hinweis: setDoc(...,{merge:true}) wird hier durchgängig verwendet, damit appState-Speicherungen
 // (bei jeder Änderung, alle 800ms) das separat abgelegte "profile"-Feld (Benutzername) nicht
@@ -269,7 +267,6 @@ async function updateMemberRole(teamId, memberUid, role) {
 
 async function removeMember(teamId, memberUid) {
   await deleteDoc(doc(db, 'teams', teamId, 'members', memberUid));
-  await setDoc(doc(db, 'teams', teamId), { memberUids: arrayRemove(memberUid) }, { merge: true });
 }
 
 // Verlässt eine geteilte Mannschaft, der man selbst nur als Mitglied (nicht als Besitzer) angehört.
@@ -277,7 +274,6 @@ async function leaveSharedTeam(teamId) {
   const user = auth.currentUser;
   if (!user) return;
   await deleteDoc(doc(db, 'teams', teamId, 'members', user.uid));
-  await setDoc(doc(db, 'teams', teamId), { memberUids: arrayRemove(user.uid) }, { merge: true });
 }
 
 // Löscht eine geteilte Mannschaft vollständig (nur der Besitzer darf das tun) - inklusive aller
@@ -369,7 +365,6 @@ async function joinViaInviteLink(token) {
     role: info.role,
     addedAt: serverTimestamp(),
   });
-  await setDoc(doc(db, 'teams', info.teamId), { memberUids: arrayUnion(user.uid) }, { merge: true });
   return { teamId: info.teamId, teamName: info.teamName, role: info.role };
 }
 
@@ -410,7 +405,6 @@ async function acceptInvite(invite) {
     role: invite.role,
     addedAt: serverTimestamp(),
   });
-  await setDoc(doc(db, 'teams', invite.teamId), { memberUids: arrayUnion(user.uid) }, { merge: true });
   await deleteDoc(doc(db, 'invites', invite.id));
 }
 
