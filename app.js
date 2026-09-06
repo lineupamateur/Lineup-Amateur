@@ -6241,15 +6241,26 @@ async function syncFromCloudOnLogin() {
       renderAccount();
     }
     const guestTeams = app.teams.filter((team) => !team.ownerUid);
-    if (cloud && Array.isArray(cloud.teams) && cloud.teams.length) {
-      const accountTeams = cloud.teams.map((team) => normalizeTeam({ ...team, ownerUid: firebaseUser.uid }));
+    if (cloud) {
+      // Konto wurde bereits mindestens einmal synchronisiert. cloud.teams kann hier bewusst leer sein,
+      // wenn ALLE Mannschaften dieses Kontos mittlerweile geteilt sind (geteilte Mannschaften werden nie
+      // in diesem Blob gespeichert, siehe buildCloudSavePayload) - das ist dann kein "neues Konto" und
+      // darf KEINE Geister-Mannschaft erzeugen. Die eigentlichen Mannschaften kommen gleich über
+      // syncSharedTeams() dazu; bis dahin bleibt app.teams ggf. leer (siehe activeTeam()-Fallback).
+      const accountTeams = Array.isArray(cloud.teams)
+        ? cloud.teams.map((team) => normalizeTeam({ ...team, ownerUid: firebaseUser.uid }))
+        : [];
       app.theme = cloud.theme || app.theme;
       app.lang = SUPPORTED_LANGS.includes(cloud.lang) ? cloud.lang : app.lang;
       app.teams = [...guestTeams, ...accountTeams];
-      app.activeTeamId =
-        cloud.activeTeamId && accountTeams.some((team) => team.id === cloud.activeTeamId)
-          ? cloud.activeTeamId
-          : accountTeams[0].id;
+      if (accountTeams.length) {
+        app.activeTeamId =
+          cloud.activeTeamId && accountTeams.some((team) => team.id === cloud.activeTeamId)
+            ? cloud.activeTeamId
+            : accountTeams[0].id;
+      } else if (!app.teams.some((team) => team.id === app.activeTeamId)) {
+        app.activeTeamId = app.teams[0]?.id || null;
+      }
       renderAll();
       applyTheme();
       applyStaticTranslations();
@@ -6258,8 +6269,8 @@ async function syncFromCloudOnLogin() {
       syncSharedTeams();
       refreshMyInvites();
     } else {
-      // Erstes Login mit diesem Konto und noch keine Cloud-Mannschaften: die aktuell aktive
-      // Gast-Mannschaft (falls vorhanden) wird dem neuen Konto zugeordnet, statt bei null zu starten.
+      // Wirklich erstes Login mit diesem Konto (noch gar kein Cloud-Dokument vorhanden): die aktuell
+      // aktive Gast-Mannschaft (falls vorhanden) wird dem neuen Konto zugeordnet, statt bei null zu starten.
       const currentGuestActive = guestTeams.find((team) => team.id === app.activeTeamId);
       if (currentGuestActive) {
         currentGuestActive.ownerUid = firebaseUser.uid;
